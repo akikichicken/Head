@@ -4,11 +4,17 @@ using UnityEngine;
 
 public class CHeadMove : MonoBehaviour
 {
-    private Vector3 screenToWorldPointPosition = new Vector3(0.0f, 0.0f, 0.0f);
+    private Rigidbody2D physics2D = null;
+    [SerializeField] private LineRenderer m_lineRender;
+
+
+    [SerializeField] private float MaxMagnitude = 2f;
+    private Vector3 m_dragStart = new Vector3(0.0f, 0.0f, 0.0f);
+    [SerializeField] private Vector2 currentForce = new Vector2(0.0f, 0.0f);
     // Start is called before the first frame update
     void Start()
     {
-
+        physics2D = this.gameObject.GetComponent<Rigidbody2D>();
     }
 
     // Update is called once per frame
@@ -21,58 +27,75 @@ public class CHeadMove : MonoBehaviour
     /// クリックされた時、実行する
     /// </summary>
     /// <returns></returns>
-    public void MouseClick()
+    public void OnMouseDown()
     {
-        screenToWorldPointPosition = this.gameObject.transform.root.transform.position;
+        m_dragStart = this.GetMousePosition();
 
-        Debug.Log("Click" + screenToWorldPointPosition);
+        m_lineRender.enabled = true;
     }
 
     /// <summary>
-    /// ドラッグされている時、実行する
+    /// ドラッグ中イベントハンドラ
+    /// </summary>
+    public void OnMouseDrag()
+    {
+        var position = this.GetMousePosition();
+        //[f: id:matatabi_ux:20181020141708g:plain]
+        this.currentForce = position - this.m_dragStart;
+        //        if (this.currentForce.magnitude > MaxMagnitude * MaxMagnitude)
+        //       {
+        this.currentForce *= MaxMagnitude / this.currentForce.magnitude;
+        //            Debug.Log("こっち");
+        //       }
+
+
+                Vector3 n_Force = new Vector3(this.currentForce.x*5f, this.currentForce.y * 5f, 0.0f);
+
+        Debug.Log("x:" + float.IsNaN(this.physics2D.position.x) + "/ y:" + float.IsNaN(this.physics2D.position.y) + "/ z:");// + float.IsNaN(this.physics2D.position.z));
+
+        var mainPos = new Vector3(this.physics2D.position.x, this.physics2D.position.y, 0.0f);
+        m_lineRender.SetPosition(0, mainPos);
+        m_lineRender.SetPosition(1, mainPos + n_Force);
+
+
+        //                this.direction.SetPosition(0, this.physics.position);
+        //        //        this.direction.SetPosition(1, this.physics.position + this.currentForce);
+    }
+
+
+    /// <summary>
+    /// ドラッグ終了イベントハンドラ
+    /// </summary>
+    public void OnMouseUp()
+    {
+        //        this.direction.enabled = false;
+        this.Flip(this.currentForce * 6f);
+
+        m_lineRender.enabled = false;
+    }
+
+    /// <summary>
+    /// ボールをはじく
+    /// </summary>
+    /// <param name="force"></param>
+    private void Flip(Vector2 force)
+    {
+        // 瞬間的に力を加えてはじく
+        this.physics2D.AddForce(force, ForceMode2D.Impulse);
+    }
+
+    /// <summary>
+    /// マウス座標をワールド座標に変換して取得
     /// </summary>
     /// <returns></returns>
-    public void MouseStayDrag()
+    private Vector3 GetMousePosition()
     {
-//        Debug.Log("イベント発生！"+ GetWorldPosMouse());
-    }
+        // マウスから取得できないZ座標を補完する
+        var position = Input.mousePosition;
+        position.z = Camera.main.transform.position.z;
+        position = Camera.main.ScreenToWorldPoint(position);
+        position.z = 0;
 
-    /// <summary>
-    /// ドラッグをやめた、実行する
-    /// </summary>
-    /// <returns></returns>
-    public void MouseExitDrag()
-    {
-        Vector3 n_pos = GetWorldPosMouse();
-        n_pos -= this.gameObject.transform.position;
-        Debug.Log("End" + n_pos);
-
-//        Vector3 n_end = GetWorldPosMouse();
-
-//        Vector3 n_judge = new Vector3(0.0f, 0.0f, 0.0f);
-//        //        n_judge.x = screenToWorldPointPosition.x - n_end.x;
-//        //        n_judge.y = screenToWorldPointPosition.y - n_end.y;
-
-//        n_judge -=(n_end+screenToWorldPointPosition);
-
-////        Debug.Log("Judge" + n_judge);
-//        n_judge.Normalize();
-//        Debug.Log("Start" + screenToWorldPointPosition + "End" + n_end + "Judge N" + n_judge);
-
-        this.gameObject.transform.root.gameObject.GetComponent<Rigidbody2D>().velocity = n_pos.normalized;
-    }
-
-    /// <summary>
-    /// ワールド座標のマウス
-    /// </summary>
-    /// <returns> Vector3型 </returns> 
-    private Vector3 GetWorldPosMouse()
-    {
-        // Vector3でマウス位置座標を取得する
-        Vector3 position = Input.mousePosition;
-        // Z軸修正
-        position.z = 10f;
-        // マウス位置座標をスクリーン座標からワールド座標に変換する
-        return Camera.main.ScreenToWorldPoint(position);
+        return position;
     }
 }
